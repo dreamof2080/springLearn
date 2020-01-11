@@ -1,4 +1,4 @@
-package com.jeffrey.learn.async.controller;
+package com.jeffrey.learn.controller;
 
 import com.jeffrey.learn.async.event.NoticeEvent;
 import com.jeffrey.learn.async.publisher.NoticePublisher;
