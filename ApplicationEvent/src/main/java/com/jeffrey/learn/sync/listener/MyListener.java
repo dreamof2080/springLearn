@@ -1,6 +1,6 @@
-package com.jeffrey.learn.listener;
+package com.jeffrey.learn.sync.listener;
 
-import com.jeffrey.learn.event.MyEvent;
+import com.jeffrey.learn.sync.event.MyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 

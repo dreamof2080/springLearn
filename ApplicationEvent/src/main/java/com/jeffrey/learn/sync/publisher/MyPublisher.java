@@ -1,4 +1,4 @@
-package com.jeffrey.learn.publisher;
+package com.jeffrey.learn.sync.publisher;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEvent;

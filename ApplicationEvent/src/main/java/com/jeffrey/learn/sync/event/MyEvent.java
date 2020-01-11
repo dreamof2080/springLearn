@@ -1,4 +1,4 @@
-package com.jeffrey.learn.event;
+package com.jeffrey.learn.sync.event;
 
 import org.springframework.context.ApplicationEvent;
 
