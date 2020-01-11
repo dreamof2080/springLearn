@@ -15,3 +15,18 @@
 * JDK观察者模式
 * JavaBean事件驱动
 * Spring事件驱动
+
+## 同步事件和异步事件
+同步事件：事件发布和事件监听都是同一个线程执行。
+异步事件：事件监听使用单独的线程执行。
+
+## 异步事件
+* 使用SpringBoot默认线程池
+在主类上增加@EnableAsync注解后，在方法上使用@Async注解即可开启异步执行某个方法。
+使用@Async开启异步执行某个方法时，在方法上增加@Order(1)注解依然会按照order从小到大的顺序
+依次创建异步线程。
+
+默认线程池通过TaskExecutionAutoConfiguration配置相关属性
+
+* 自定义线程池
+通过实现AsyncConfigurer接口来配置线程池
