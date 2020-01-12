@@ -108,3 +108,17 @@ ByteBuffer支持特定类型的put和get，特定类型的put时，相应的get�
     System.out.println(buffer.getChar());
     System.out.println(buffer.getShort());
 ```
+
+### Channel
+#### NIO的通道与流的区别：
+* BIO中的stream是单向的，例如FileInputStream对象只能读取数据的操作，而NIO中的通道(Channel)是双向的，可以读操作，也可以写操作。
+* 通道可以实现异步读写数据
+* 通道可以从缓冲读数据，也可以写数据到缓冲
+
+#### 常用的Channel类
+Channel在NIO中是一个接口，常用的Channel类有：
+* FileChannel: 用于文件的数据读写
+* DatagramChannel: 用于UDP的数据读写
+* ServerSocketChannel (类似ServerSocket): 用于TCP的数据读写
+* SocketChannel (类似Socket): 用于TCP的数据读写
+
