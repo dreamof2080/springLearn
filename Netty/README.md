@@ -122,3 +122,100 @@ Channel在NIO中是一个接口，常用的Channel类有：
 * ServerSocketChannel (类似ServerSocket): 用于TCP的数据读写
 * SocketChannel (类似Socket): 用于TCP的数据读写
 
+### Selector
+* Java的NIO，用非阻塞的IO方式。可以用一个线程，处理多个的客户端连接，
+就会使用到Selector(选择器)。
+* Selector能够检测多个注册的通道上是否有事件发生（注意：多个Channel
+以事件的方式可以注册到一个Selector），如果事件发生，便获取事件然后针对
+每个事件进行相应的处理。这样就可以只用一个单线程去管理多个通道，也就是
+管理多个连接和请求。
+* 只有在连接/通道真正有读写事件发生时，才会进行读写，就大大地减少了系统开销，
+并且不必为每个连接都创建一个线程，不用去维护多个线程。
+* 避免了多线程之间的上下文切换导致的开销
+
+#### 抽象类Selector方法说明
+```java
+import java.io.Closeable;import java.nio.channels.SelectionKey;
+public abstract class Selector implements Closeable {
+    // 得到一个选择器对象 
+    public static Selector open();
+    // 监控所有组册的通道，当其中有IO操作可以进行时，将对应的SelectionKey
+    // 加入到内部集合并返回，参数用来设置超时时间
+    public int select(long timeout);
+    // 从内部集合中得到所有的SelectionKey
+    public Set<SelectionKey> selectedKeys();
+}
+```
+```markdown
+selector.select();//阻塞
+selector.select(1000);//阻塞1000毫秒，在1000毫秒后返回
+selector.wakeup();//唤醒selector
+selector.selectNow();//不阻塞，立马返回
+```
+
+#### SelectionKey的相关API
+```java
+import java.nio.channels.SelectableChannel;
+import java.nio.channels.Selector;
+public abstract class SelectionKey {
+    // 得到与之关联的Selector对象
+    public abstract Selector selector();
+    // 得到与之关联的通道
+    public abstract SelectableChannel channel();
+    // 得到与之关联的共享数据
+    public final Object attachment();
+    // 设置或改变监听事件
+    public abstract SelectionKey interestOps(int ops);
+    // 是否可以accept
+    public final boolean isAcceptable();
+    // 是否可以读
+    public final boolean isReadable();
+    // 是否可以写
+    public final boolean isWritable();
+}
+```
+
+#### NIO非阻塞网络编程原理分析
+1. 当客户端连接时，会通过ServerSocketChannel得到SocketChannel
+2. Selector进行监听select方法，返回有事件发生的通道的个数
+3. 将socketChannel注册到Selector上，register(Selector sel, int ops),
+一个elector桑可以注册多个SocketChannel
+4. 组册后返回一个SelectionKey,会和该Selector关联(集合)，进一步得到各个
+SelectionKey(有事件发生)
+5. 在通过SelectionKey反响获取SocketChannel,方法channel()，可以通过得到的channel,
+完成业务处理。
+
+#### SocketChannel
+网络IO通道，具体负责进行读写操作。NIO把缓冲区的数据写入通道，或者把通道里的数据读到缓冲区。
+```markdown
+// 得到一个SocketChannel通道
+public static SocketChannel open();
+// 设置阻塞或非阻塞模式，false表示采用非阻塞模式
+public final SelectableChannel configureBlocking(boolean block);
+// 连接服务器
+public boolean connect(SocketAddress remote);
+// 如果上面的方法连接失败，接下来就要通过该方法完成连接操作
+public boolean finishConnect();
+// 往通道里写数据
+public int write(ByteBuffer src);
+// 从通道里读数据
+public int read(ByteBuffer dst);
+// 组册一个选择器并设置监听事件，最后一个参数可以设置共享数据
+public final SelectionKey register(Selector sel, int ops, Object att)
+// 关闭通道
+public final void close();
+```
+
+#### ServerSocketChannel在服务器端监听新的客户端Socket连接
+```markdown
+// 得到一个ServerSocketChannel 通道
+public static ServerSocketChannel open();
+// 设置服务器端端口号
+public final ServerSocketChannel bind(SocketAddress local);
+// 设置阻塞或非阻塞模式
+public final SelectableChannel configureBlocking(boolean block);
+// 接受一个连接，返回代表这个连接的通道对象
+public SocketChannel accept();
+// 注册一个选择器并设置监听事件
+public final SelectionKey register(Selector sel, int ops)
+```
