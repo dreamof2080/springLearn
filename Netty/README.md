@@ -219,3 +219,88 @@ public SocketChannel accept();
 // 注册一个选择器并设置监听事件
 public final SelectionKey register(Selector sel, int ops)
 ```
+### NIO零拷贝
+* 零拷贝是网络编程的关键，很多性能优化都离不开
+* 在java程序中，常用的零拷贝由mmap(内存映射)和sendFile。那么，他们在OS里，到底是怎么样的一个设计？
+我们分析mmap和sendFile这两个零拷贝
+* 零拷贝不是拷贝，只是从操作系统角度，是没有CPU拷贝
+
+#### 传统IO拷贝分析
+3次状态切换：
+```markdown
+1. 从用户态切换到内核态(kernel context)
+2. 从内核态到用户态
+3. 再从用户态到内核态
+```
+4次拷贝次数
+```markdown
+1. 第一次拷贝：硬件上的数据做一次DMA拷贝，拷贝到内核buffer(kernel buffer)
+2. 第二次拷贝：从内核buffer拷贝到用户buffer(user buffer)--cpu copy
+3. 第三次拷贝：从用户buffer拷贝到socket buffer--cpu copy
+4. 第四次拷贝：从socket buffer再做一次DMA拷贝到协议栈(protocol engine)
+```
+```markdown
+DMA: direct memory access 直接内存拷贝（不使用cpu copy）
+```
+
+#### mmap优化拷贝分析
+mmap通过内存映射，将文件映射到内核缓冲区，同时，用户空间可以共享内核空间的数据。
+这样，在进行网络传输时，就可以减少内核空间到用户空间的拷贝次数。
+
+3次状态切换：
+```markdown
+1. 从用户态切换到内核态（kernel context）
+2. 从内核态到用户态
+3. 再从用户态到内核态
+```
+3次拷贝次数：
+```markdown
+1. 第一次拷贝：硬件上的数据做一次DMA拷贝，拷贝到内核buffer(kernel buffer)
+2. 第二次拷贝：由于mmap userBuffer和内核buffer可以共享数据，所以此时就不会在
+发生一次用户拷贝，因此数据可以直接在内核缓冲直接进行修改，修改完后再通过CPU拷贝到
+socket buffer。 --cpu copy
+3. 第三次拷贝：从socket buffer再做一次DMA拷贝到协议栈(protocol engine)
+```
+
+#### sendFile 优化
+linux2.1版本提供了sendFile函数，其基本原理如下：数据根本不经过用户态，直接从内核缓冲区进入到socket buffer,
+同时，由于和用户态完全不关，就减少了一次上下文切换。
+
+2次状态切换：
+```markdown
+1. 从用户态切换到内核态(kernel context)
+2. 从内核态到用户态
+```
+3次拷贝次数：
+```markdown
+1. 第一次拷贝：硬件上的数据做一次DMA拷贝，拷贝到内核buffer(kernel buffer)
+2. 第二次拷贝：使用cpu copy从内核buffer拷贝到socket buffer --cpu copy
+3. 第三次拷贝：从socket buffer再做一次DMA拷贝到协议栈(protocol engine)
+```
+
+#### sendFile 第2次优化
+linux在2.4版本中，做了一些修改，避免了从内核缓冲区拷贝到Socket buffer的操作，直接拷贝到协议栈，从而再一次减少了数据拷贝。
+
+2次状态切换：
+```markdown
+1. 从用户态切换到内核态(kernel context)
+2. 从内核态到用户态
+```
+2次拷贝次数：
+```markdown
+1. 第一次拷贝：硬件上的数据做一次DMA拷贝，拷贝到内核buffer(kernel buffer)
+2. 第二次拷贝：从内核buffer再做一次DMA拷贝到协议栈(protocol engine)
+3. 这里其实有一次cpu拷贝kernel buffer -> socket buffer，但是，拷贝的信息很少，
+比如length、offset，消耗低，可以忽略。
+```
+这就是真正的零拷贝。
+
+#### 零拷贝总结
+1. 零拷贝，是从操作系统的角度来说的。因为内核缓冲区之间，没有数据是重复的（只有kernel buffer有一份数据）。
+2. 零拷贝不仅仅带来更少的数据复制，还能带来其他的性能优势，例如更少的上下文切换，
+更少的CPU缓存伪共享以及无CPU校验和计算。
+
+#### mmap和sendFile的区别
+1. mmap时合小数据量读写，sendFile时合大文件传输。
+2. mmap需要4次上下文切换，3次数据拷贝；sendFile需要3次上下文切换，最少2次数据拷贝。
+3. sendFile可以利用DMA方式，减少CPU拷贝，mmap则不能(必须从内核拷贝到Socket缓冲区)
