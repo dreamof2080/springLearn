@@ -1,0 +1,17 @@
+server:
+  port: 8090
+  servlet:
+    context-path: /app
+    session:
+      timeout: 30m
+  tomcat:
+    uri-encoding: utf-8
+#    最大线程数
+    max-threads: 1000
+#    最小空闲线程
+    min-spare-threads: 30
+
+spring:
+  application:
+    #服务名
+    name: APP
